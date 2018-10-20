@@ -3,6 +3,7 @@
 import logging; logging.basicConfig(level=logging.WARNING)
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from collections import OrderedDict
 from common import layers
 from common.util import numerical_gradient, get_one_batch
@@ -23,16 +24,16 @@ class MultiLayerRegression(object):
         self.weight_decay_lambda = weight_decay_lambda
         self.params = {}
 
-        # 重みの初期化
+        # weights initialization
         self.__init_weight(weight_init_std)
 
-        # レイヤの生成
+        # generate layers
         activation_layer = {'sigmoid': layers.Sigmoid, 'relu': layers.Relu}
         self.layers = OrderedDict()
         for idx in range(1, self.hidden_layer_num + 1):
             self.layers['Affine' + str(idx)] = layers.Affine(self.params['W' + str(idx)],
                                                              self.params['b' + str(idx)])
-            self.layers['Activation_function' + str(idx)] = activation_layer[activation]()
+            self.layers['Activation' + str(idx)] = activation_layer[activation]()
 
         idx = self.hidden_layer_num + 1
         self.layers['Affine' + str(idx)] = layers.Affine(self.params['W' + str(idx)],
@@ -101,18 +102,18 @@ class MultiLayerRegression(object):
 
 if __name__ == '__main__':
     hp_data = HousePrices('./data')
-    x, t, x_pre = hp_data.load()
+    x, t, x_submission = hp_data.load()
     train_num = 1000
     train_x, train_y, test_x, test_y = x[:train_num, :], t[:train_num, :], x[train_num:, :], t[train_num:, :]
     
     max_iterations = 2000
     batch_size = 128
-    # 1:実験の設定==========
+    # initialize network optimizer
     weight_init_types = {'std=0.01': 0.01, 'Xavier': 'sigmoid', 'He': 'relu'}
     optimizer = SGD(lr=0.01)
 
     network = MultiLayerRegression(input_size=331, hidden_size_list=[100, 100, 100, 100],
-                                   output_size=1, weight_init_std='sigmoid', activation='relu')
+                                   output_size=1, weight_init_std='relu', activation='relu')
     train_loss = []
 
     # 2:訓練の開始==========
@@ -128,4 +129,11 @@ if __name__ == '__main__':
             print("===========" + "iteration:" + str(i) + "===========")
             # loss = network.loss(x_batch, t_batch)
             print('Sigmoid-Xavier' + ":" + str(loss))
-
+    # x_pre = train_x[0:3]
+    # t_pre = train_y[0:3]
+    # y_pre = network.predict(x_pre)
+    # print('label:', t_pre)
+    # print('prediction:', y_pre)
+    y_submission = 10**network.predict(x_submission)
+    df = pd.DataFrame({'Id': hp_data.test_id, 'SalePrice': y_submission.flatten()})
+    df.to_csv('prediction.csv', index=False)
