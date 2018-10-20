@@ -42,12 +42,14 @@ class MultiLayerRegression(object):
         # self.last_layer = layers.SoftmaxCrossEntropy()
         self.last_layer = layers.MSE()
 
+        self.activation_dict = OrderedDict()
+
     def __init_weight(self, weight_init_std):
         all_size_list = [self.input_size] + self.hidden_size_list + [self.output_size]
 
         for idx in range(1, len(all_size_list)):
             scale = weight_init_std
-            print(type(weight_init_std), ':', weight_init_std)
+            print('weight_init_std:', weight_init_std)
             if isinstance(weight_init_std, str):
                 if weight_init_std.lower() in ['sigmoid', 'xavier']:
                     scale = np.sqrt(1.0 / all_size_list[idx - 1])
@@ -61,8 +63,10 @@ class MultiLayerRegression(object):
 
     def predict(self, x_batch):
         tmp = x_batch.copy()  # .copy() is not necessary!
-        for layer in self.layers.values():
+        for layer_name, layer in self.layers.items():
             tmp = layer.forward(tmp)
+            if 'Activation' in layer_name:
+                self.activation_dict[layer_name] = tmp
         return tmp
 
     def loss(self, x_batch, t_batch):
@@ -100,26 +104,37 @@ class MultiLayerRegression(object):
         return grads
 
 
+def submission_loss(bach_x):
+    pass
+
+
+def generate_submission_csv(id_column, predict_y, filename='prediction.csv', write_index=False):
+    df = pd.DataFrame({'Id': id_column, 'SalePrice': predict_y.flatten()})
+    df.to_csv(filename, index=write_index)
+
+
 if __name__ == '__main__':
     hp_data = HousePrices('./data')
     x, t, x_submission = hp_data.load()
-    train_num = 1000
+    print('x.shape:', x.shape)
+    train_num = 1459
     train_x, train_y, test_x, test_y = x[:train_num, :], t[:train_num, :], x[train_num:, :], t[train_num:, :]
-    
+
     max_iterations = 2000
     batch_size = 128
     # initialize network optimizer
     weight_init_types = {'std=0.01': 0.01, 'Xavier': 'sigmoid', 'He': 'relu'}
-    optimizer = SGD(lr=0.01)
+    # optimizer = SGD(lr=0.01)
+    optimizer = Adam(lr=0.01)
 
-    network = MultiLayerRegression(input_size=331, hidden_size_list=[100, 100, 100, 100],
-                                   output_size=1, weight_init_std='relu', activation='relu')
+    network = MultiLayerRegression(input_size=331, hidden_size_list=[100, 100, 100, 10],
+                                   output_size=1, weight_init_std='sigmoid', activation='relu')
     train_loss = []
 
     # 2:訓練の開始==========
     for i in range(max_iterations):
         x_batch, t_batch = get_one_batch(train_x, train_y, batch_size=batch_size)
-            
+
         grads = network.gradient(x_batch, t_batch)
         optimizer.update(network.params, grads)
 
@@ -134,6 +149,18 @@ if __name__ == '__main__':
     # y_pre = network.predict(x_pre)
     # print('label:', t_pre)
     # print('prediction:', y_pre)
-    y_submission = 10**network.predict(x_submission)
-    df = pd.DataFrame({'Id': hp_data.test_id, 'SalePrice': y_submission.flatten()})
-    df.to_csv('prediction.csv', index=False)
+
+    y_submission = 10 ** network.predict(x_submission)
+    generate_submission_csv(id_column=hp_data.test_id, predict_y=y_submission)
+
+    bins_range = 30
+    for idx, key in enumerate(network.activation_dict.keys()):
+        ax = plt.subplot(1, network.hidden_layer_num, idx + 1)
+        ax.set_title(key)
+        ran = (0, 1)
+        ax.hist(network.activation_dict[key].flatten(), bins=bins_range, range=ran)
+        if idx != 0:
+            plt.yticks([], [])
+
+    plt.tight_layout()
+    plt.show()
