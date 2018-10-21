@@ -238,6 +238,7 @@ def col2im(col, input_shape, filter_h, filter_w, stride=1, pad=0):
 
     return img[:, :, pad:H + pad, pad:W + pad]
 
+
 if __name__ == '__main__':
     step_num = 2
     batch_size = 3

@@ -387,7 +387,7 @@ class HousePrices(object):
         all_features = all_features.fillna(all_features.mean())
         all_features = pd.get_dummies(all_features, dummy_na=True)  # dummy_na=True take NaN as a legal feature label
         
-        if scale:
+        if scale:  # scale data to [0, 1] by (features - features.min) / (features.max - features.min)
             slices = (all_features.max() != 0).values
             all_features -= all_features.min()
             all_features.iloc[:, slices] /= all_features.iloc[:, slices].max()  # to avoid the case where /* max == 0 */
@@ -395,7 +395,7 @@ class HousePrices(object):
         n_train = train_data.shape[0]
         train_features = all_features[:n_train].values
         test_features = all_features[n_train:].values
-        train_labels = (train_data.SalePrice.values).reshape((-1, 1))
+        train_labels = train_data.SalePrice.values.reshape((-1, 1))
         
         if label_log:
             assert (train_labels>0).all()

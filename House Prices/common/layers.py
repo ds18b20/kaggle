@@ -269,7 +269,6 @@ class BatchNormalization(object):
     """
     http://arxiv.org/abs/1502.03167
     """
-
     def __init__(self, gamma, beta, momentum=0.9, running_mean=None, running_var=None):
         self.gamma = gamma
         self.beta = beta
@@ -319,7 +318,6 @@ class BatchNormalization(object):
         else:
             xc = x - self.running_mean
             xn = xc / (np.sqrt(self.running_var + 10e-7))
-
         out = self.gamma * xn + self.beta
         return out
 
@@ -350,7 +348,7 @@ class BatchNormalization(object):
         return dx
 
 
-class Convolution:
+class Convolution(object):
     def __init__(self, weights, bias, stride=1, pad=0):
         self.W = weights
         self.b = bias
@@ -474,6 +472,7 @@ class Pooling(object):
         dx = col2im(dcol, self.x.shape, self.pool_h, self.pool_w, self.stride, self.pad)
         
         return dx
+
 
 if __name__ == '__main__':
     # data = (np.arange(9)+1).reshape(3, 3)

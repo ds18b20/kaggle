@@ -16,12 +16,17 @@ import time
 
 class MultiLayerRegression(object):
     def __init__(self, input_size, hidden_size_list, output_size,
-                 activation='relu', weight_init_std='relu', weight_decay_lambda=0.0):
+                 activation='relu', weight_init_std='relu',
+                 weight_decay_lambda=0.0,
+                 use_dropout=False, dropout_ratio=0.5,
+                 use_batchnorm=False):
         self.input_size = input_size
         self.output_size = output_size
         self.hidden_size_list = hidden_size_list
         self.hidden_layer_num = len(hidden_size_list)
         self.weight_decay_lambda = weight_decay_lambda
+        self.use_dropout = use_dropout
+        self.use_batchnorm = use_batchnorm
         self.params = {}
 
         # weights initialization
@@ -33,20 +38,25 @@ class MultiLayerRegression(object):
         for idx in range(1, self.hidden_layer_num + 1):
             self.layers['Affine' + str(idx)] = layers.Affine(self.params['W' + str(idx)],
                                                              self.params['b' + str(idx)])
+            if self.use_batchnorm:
+                self.layers['BatchNorm' + str(idx)] = layers.BatchNormalization(self.params['gamma' + str(idx)],
+                                                                                self.params['beta' + str(idx)])
             self.layers['Activation' + str(idx)] = activation_layer[activation]()
-
+            if self.use_dropout:
+                self.layers['Dropout' + str(idx)] = layers.Dropout(dropout_ratio)
+        # last Affine layer need no Activation & Batch Norm
         idx = self.hidden_layer_num + 1
         self.layers['Affine' + str(idx)] = layers.Affine(self.params['W' + str(idx)],
                                                          self.params['b' + str(idx)])
 
         # self.last_layer = layers.SoftmaxCrossEntropy()
         self.last_layer = layers.MSE()
-
+        # dict to save activation layer output
         self.activation_dict = OrderedDict()
 
     def __init_weight(self, weight_init_std):
         all_size_list = [self.input_size] + self.hidden_size_list + [self.output_size]
-
+        #
         for idx in range(1, len(all_size_list)):
             scale = weight_init_std
             print('weight_init_std:', weight_init_std)
@@ -57,20 +67,29 @@ class MultiLayerRegression(object):
                     scale = np.sqrt(2.0 / all_size_list[idx - 1])
                 else:
                     print('str ')
+            else:
+                print('not str')
+            self.params['W' + str(idx)] = scale * np.random.randn(all_size_list[idx - 1], all_size_list[idx])
+            self.params['b' + str(idx)] = np.random.randn(all_size_list[idx])
+        # last Affine layer need no Activation & Batch Norm
+        if self.use_batchnorm:
+            for idx in range(1, self.hidden_layer_num + 1):
+                self.params['gamma' + str(idx)] = np.ones(all_size_list[idx])
+                self.params['beta' + str(idx)] = np.zeros(all_size_list[idx])
 
-            self.params['W'+str(idx)] = scale * np.random.randn(all_size_list[idx - 1], all_size_list[idx])
-            self.params['b'+str(idx)] = np.random.randn(all_size_list[idx])
-
-    def predict(self, x_batch):
+    def predict(self, x_batch, train_flag=False):
         tmp = x_batch.copy()  # .copy() is not necessary!
         for layer_name, layer in self.layers.items():
-            tmp = layer.forward(tmp)
+            if 'Dropout' in layer_name or 'BatchNorm' in layer_name:
+                tmp = layer.forward(tmp, train_flg=train_flag)
+            else:
+                tmp = layer.forward(tmp)
             if 'Activation' in layer_name:
                 self.activation_dict[layer_name] = tmp
         return tmp
 
-    def loss(self, x_batch, t_batch):
-        y_batch = self.predict(x_batch)
+    def loss(self, x_batch, t_batch, train_flag=False):
+        y_batch = self.predict(x_batch, train_flag=train_flag)
         weight_decay = 0
         for idx in range(1, self.hidden_layer_num + 2):
             W = self.params['W' + str(idx)]
@@ -80,7 +99,7 @@ class MultiLayerRegression(object):
 
     def gradient(self, x_batch, t_batch):
         # forward
-        self.loss(x_batch, t_batch)
+        self.loss(x_batch, t_batch, train_flag=True)
         # backward
         dout = 1
         dout = self.last_layer.backward(d_y=dout)
@@ -89,22 +108,33 @@ class MultiLayerRegression(object):
 
         for layer in layers:
             dout = layer.backward(dout)
-        grad = {}
+        grads = {}
         for idx in range(1, len(self.hidden_size_list) + 2):
-            grad['W' + str(idx)] = self.layers['Affine' + str(idx)].d_W + self.weight_decay_lambda * self.layers['Affine' + str(idx)].W
-            grad['b'+str(idx)] = self.layers['Affine' + str(idx)].d_b
-        return grad
-    
+            grads['W' + str(idx)] = self.layers['Affine' + str(idx)].d_W + self.weight_decay_lambda * self.layers['Affine' + str(idx)].W
+            grads['b' + str(idx)] = self.layers['Affine' + str(idx)].d_b
+        # calculate gradients of gamma & beta
+        # last Affine layer need no BN
+        if self.use_batchnorm:
+            for idx in range(1, self.hidden_layer_num + 1):
+                grads['gamma' + str(idx)] = self.layers['BatchNorm' + str(idx)].dgamma
+                grads['beta' + str(idx)] = self.layers['BatchNorm' + str(idx)].dbeta
+        return grads
+
     def numerical_gradient(self, x, t):
         self.x = x
         self.t = t
-        loss_W = lambda W: self.loss(x, t)
-        
+        loss_W = lambda W: self.loss(x, t, train_flag=True)
+
         grads = {}
         for idx in range(1, self.hidden_layer_num + 2):
             grads['W' + str(idx)] = numerical_gradient(loss_W, self.params['W' + str(idx)])
             grads['b' + str(idx)] = numerical_gradient(loss_W, self.params['b' + str(idx)])
-
+        # calculate gradients of gamma & beta
+        # last Affine layer need no BN
+        if self.use_batchnorm:
+            for idx in range(1, self.hidden_layer_num + 1):
+                grads['gamma' + str(idx)] = numerical_gradient(loss_W, self.params['gamma' + str(idx)])
+                grads['beta' + str(idx)] = numerical_gradient(loss_W, self.params['beta' + str(idx)])
         return grads
 
 
@@ -129,11 +159,14 @@ if __name__ == '__main__':
     # initialize network optimizer
     weight_init_types = {'std=0.01': 0.01, 'Xavier': 'sigmoid', 'He': 'relu'}
     # optimizer = SGD(lr=0.01)
-    optimizer = Adam(lr=1e-4)
+    optimizer = Adam(lr=1e-3)
 
     network = MultiLayerRegression(input_size=331, hidden_size_list=[100, 100, 100, 10], output_size=1,
-                                   weight_init_std='sigmoid', activation='relu',
-                                   weight_decay_lambda=1e-6)
+                                   weight_init_std='sigmoid', activation='sigmoid',
+                                   weight_decay_lambda=1e-6,
+                                   use_dropout=True, dropout_ratio=0.1,
+                                   use_batchnorm=True)
+    print('network layers:', network.layers.keys())
     train_loss = []
     test_loss = []
 
@@ -144,9 +177,9 @@ if __name__ == '__main__':
         grads = network.gradient(x_batch, t_batch)
         optimizer.update(network.params, grads)
 
-        tmp_train_loss = network.loss(x_batch, t_batch)
+        tmp_train_loss = network.loss(x_batch, t_batch, train_flag=False)
         train_loss.append(tmp_train_loss)
-        tmp_test_loss = network.loss(test_x, test_y)
+        tmp_test_loss = network.loss(test_x, test_y, train_flag=False)
         test_loss.append(tmp_test_loss)
         if i % 1000 == 0:
             print("===========" + "iteration:" + str(i) + "===========")
@@ -159,7 +192,7 @@ if __name__ == '__main__':
     # print('prediction:', y_pre)
 
     # generate submission csv
-    y_submission = 10 ** network.predict(x_submission)
+    y_submission = 10 ** network.predict(x_submission, train_flag=False)
     generate_submission_csv(id_column=hp_data.test_id, predict_y=y_submission)
 
     # # show activation layer out
