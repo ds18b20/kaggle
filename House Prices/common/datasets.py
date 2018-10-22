@@ -370,12 +370,13 @@ class HousePrices(object):
         self.test_filename='test.csv'
         self.test_id = None
 
-    def load(self, scale=True, label_log=True):
+    def load(self, scale=True, label_log=True, dropna_thresh_ratio=0.8):
         """
-        open a text file and return data as an array
-        :param filename: file name to open
-        :param convert: convert \n \r \u3000 to space
-        :return: ndarray data
+        return House Prices dataset
+        :param scale:
+        :param label_log:
+        :param dropna_thresh_ratio:
+        :return:
         """
         train_data = pd.read_csv(os.path.join(self.root, self.train_filename))
         test_data = pd.read_csv(os.path.join(self.root, self.test_filename))
@@ -402,14 +403,8 @@ class HousePrices(object):
             train_labels = np.log10(train_labels)
 
         return train_features, train_labels, test_features
-    
-    def get_id(self, type='test'):
-        if type == 'test':
-            return self.test_id
-        else:
-            pass
 
-            
+
 if __name__ == '__main__':
     """ test MNIST """
     # mnist = MNIST('datasets/mnist')

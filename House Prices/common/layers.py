@@ -286,23 +286,23 @@ class BatchNormalization(object):
         self.dgamma = None
         self.dbeta = None
 
-    def forward(self, x, train_flg=True):
+    def forward(self, x, train_flag=True):
         self.input_shape = x.shape
         if x.ndim != 2:
             N, C, H, W = x.shape
             x = x.reshape(N, -1)
 
-        out = self.__forward(x, train_flg)
+        out = self.__forward(x, train_flag)
 
         return out.reshape(*self.input_shape)
 
-    def __forward(self, x, train_flg):
+    def __forward(self, x, train_flag):
         if self.running_mean is None:
             N, D = x.shape
             self.running_mean = np.zeros(D)
             self.running_var = np.zeros(D)
 
-        if train_flg:
+        if train_flag:
             mu = x.mean(axis=0)
             xc = x - mu
             var = np.mean(xc ** 2, axis=0)
