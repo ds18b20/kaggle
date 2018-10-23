@@ -370,19 +370,29 @@ class HousePrices(object):
         self.test_filename='test.csv'
         self.test_id = None
 
-    def load(self, scale=True, label_log=True, dropna_thresh_ratio=0.8):
+    def load(self, scale=True, label_log10=True, non_nan_ratio=0.75):
         """
-        return House Prices dataset
+        load House Prices dataset
         :param scale:
-        :param label_log:
-        :param dropna_thresh_ratio:
+        :param label_log10:
+        :param non_nan_ratio:
         :return:
         """
         train_data = pd.read_csv(os.path.join(self.root, self.train_filename))
+        # keep columns which Non-NaN count > non_nan_ratio * ALL
+        # delete columns which Non-NaN count < non_nan_ratio * ALL
+        # delete columns which NaN count > non_nan_ratio * ALL 
+        train_data = train_data.dropna(axis=1, how='any', thresh=train_data.shape[0] * non_nan_ratio)
+        
         test_data = pd.read_csv(os.path.join(self.root, self.test_filename))
+        # keep columns which Non-NaN count > non_nan_ratio * ALL
+        # delete columns which Non-NaN count < non_nan_ratio * ALL
+        # delete columns which NaN count > non_nan_ratio * ALL 
+        test_data = test_data.dropna(axis=1, how='any', thresh=test_data.shape[0] * non_nan_ratio)
+
         self.test_id = test_data['Id'].values
         
-        all_features = pd.concat((train_data.iloc[:, 1:-1], test_data.iloc[:, 1:]))  # remove ID, SalePrice columns
+        all_features = pd.concat((train_data.iloc[:, 1:-1], test_data.iloc[:, 1:]))  # remove ID & SalePrice(only in train) columns
         numeric_features = all_features.dtypes[all_features.dtypes != 'object'].index
         all_features[numeric_features] = all_features[numeric_features].apply(lambda x: (x - x.mean()) / (x.std()))
         all_features = all_features.fillna(all_features.mean())
@@ -398,13 +408,19 @@ class HousePrices(object):
         test_features = all_features[n_train:].values
         train_labels = train_data.SalePrice.values.reshape((-1, 1))
         
-        if label_log:
+        if label_log10:
             assert (train_labels>0).all()
             train_labels = np.log10(train_labels)
 
         return train_features, train_labels, test_features
+    
+    def get_id(self, type='test'):
+        if type == 'test':
+            return self.test_id
+        else:
+            pass
 
-
+            
 if __name__ == '__main__':
     """ test MNIST """
     # mnist = MNIST('datasets/mnist')
