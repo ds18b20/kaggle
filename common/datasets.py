@@ -372,11 +372,6 @@ class HousePrices(object):
 
     def load(self, scale=True, label_log10=True, non_nan_ratio=0.75):
         """
-        load House Prices dataset
-        :param scale:
-        :param label_log10:
-        :param non_nan_ratio:
-        :return:
         """
         train_data = pd.read_csv(os.path.join(self.root, self.train_filename))
         # keep columns which Non-NaN count > non_nan_ratio * ALL
@@ -393,11 +388,12 @@ class HousePrices(object):
         self.test_id = test_data['Id'].values
         
         all_features = pd.concat((train_data.iloc[:, 1:-1], test_data.iloc[:, 1:]))  # remove ID & SalePrice(only in train) columns
-        numeric_features = all_features.dtypes[all_features.dtypes != 'object'].index
-        all_features[numeric_features] = all_features[numeric_features].apply(lambda x: (x - x.mean()) / (x.std()))
-        all_features = all_features.fillna(all_features.mean())
-        all_features = pd.get_dummies(all_features, dummy_na=True)  # dummy_na=True take NaN as a legal feature label
-        
+        numeric_features = all_features.dtypes[all_features.dtypes != 'object'].index  # index of numeric features
+        all_features[numeric_features] = all_features[numeric_features].apply(lambda x: (x - x.mean()) / (x.std()))  # normalization
+        all_features = all_features.fillna(all_features.mean())  # fill NaN with mean value
+        all_features = pd.get_dummies(all_features, dummy_na=True)  # dummy_na=True: take NaN as a legal feature label
+
+        # already scaled to [0, 1] !!!
         if scale:  # scale data to [0, 1] by (features - features.min) / (features.max - features.min)
             slices = (all_features.max() != 0).values
             all_features -= all_features.min()
@@ -413,14 +409,37 @@ class HousePrices(object):
             train_labels = np.log10(train_labels)
 
         return train_features, train_labels, test_features
-    
-    def get_id(self, type='test'):
-        if type == 'test':
-            return self.test_id
-        else:
-            pass
 
-            
+
+class MushroomClass(object):
+    def __init__(self, root):
+        """
+        initialize HousePrices Loader with file path.
+        :param root: file path
+        """
+        self.root = root
+        self.train_filename = 'mushrooms.csv'
+        self.test_id = None
+
+    def load(self, non_nan_ratio=0.75):
+        """
+        load Mushroom Classification dataset
+        :param scale:
+        :param label_log10:
+        :param non_nan_ratio:
+        :return:
+        """
+        train_data = pd.read_csv(os.path.join(self.root, self.train_filename))
+        train_data.replace('?', np.nan, inplace=True)
+        # keep columns which Non-NaN count > non_nan_ratio * ALL
+        # delete columns which Non-NaN count < non_nan_ratio * ALL
+        # delete columns which NaN count > non_nan_ratio * ALL
+        train_data.dropna(axis=1, how='any', thresh=train_data.shape[0] * non_nan_ratio, inplace=True)
+        # all_features = pd.get_dummies(train_data, dummy_na=True)  # dummy_na=True take NaN as a legal feature label
+
+        return train_data.iloc[:, 1:].values, train_data['class'].values.reshape((-1, 1))
+
+
 if __name__ == '__main__':
     """ test MNIST """
     # mnist = MNIST('datasets/mnist')
@@ -468,7 +487,11 @@ if __name__ == '__main__':
     # print(lyrics.char_to_idx(lyrics_data[1:11]))
     
     """ test HousePrices """
-    hp = HousePrices('../data')
-    ret = hp.load()
-    print(ret[0].shape, ret[1].shape, ret[2].shape)
-    
+    # hp = HousePrices('../data')
+    # ret = hp.load()
+    # print(ret[0].shape, ret[1].shape, ret[2].shape)
+
+    """ test MushroomClass """
+    mc = MushroomClass('../data')
+    ret = mc.load()
+    print(ret.shape)
