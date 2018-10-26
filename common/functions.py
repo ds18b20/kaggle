@@ -19,12 +19,16 @@ def softmax(array):
 
 
 def cross_entropy(y, label):
-    # y/label can be multi dimensional array
+    # slice prediction result by label
+    # TODO
+    # y/label can be multi dimensional array ???
+    assert y.shape[0] == label.shape[0]
     delta = 1e-6  # in case of log(0)
+    
     row_count = y.shape[0]
     index_row = range(row_count)
-    index_column = label
-    picked = y[index_row, index_column] + delta  # select element by y
+    index_column = label.flatten()  # Error Fixed: label must be a one dimensional array
+    picked = y[index_row, index_column] + delta  # choose prediction corresponding to label
     return np.sum(-np.log(picked)) / row_count  # sum(-t * ln(y)) / row_count
 
 

@@ -429,15 +429,20 @@ class MushroomClass(object):
         :param non_nan_ratio:
         :return:
         """
-        train_data = pd.read_csv(os.path.join(self.root, self.train_filename))
-        train_data.replace('?', np.nan, inplace=True)
+        data = pd.read_csv(os.path.join(self.root, self.train_filename))
+        label_data = data.iloc[:, 0]
+        label_data.replace({'e': 0, 'p': 1}, inplace=True)
+        
+        train_data = data.iloc[:, 1:]
+        train_data.replace('?', np.nan, inplace=True)  # replace '?' with np.nan
         # keep columns which Non-NaN count > non_nan_ratio * ALL
         # delete columns which Non-NaN count < non_nan_ratio * ALL
         # delete columns which NaN count > non_nan_ratio * ALL
         train_data.dropna(axis=1, how='any', thresh=train_data.shape[0] * non_nan_ratio, inplace=True)
-        # all_features = pd.get_dummies(train_data, dummy_na=True)  # dummy_na=True take NaN as a legal feature label
+        # vectorize strings to numbers
+        train_data = pd.get_dummies(train_data, dummy_na=True)  # dummy_na=True take NaN as a legal feature label
 
-        return train_data.iloc[:, 1:].values, train_data['class'].values.reshape((-1, 1))
+        return train_data.values.astype(np.float64), label_data.values.reshape((-1, 1))
 
 
 if __name__ == '__main__':
@@ -492,6 +497,6 @@ if __name__ == '__main__':
     # print(ret[0].shape, ret[1].shape, ret[2].shape)
 
     """ test MushroomClass """
-    mc = MushroomClass('../data')
+    mc = MushroomClass('..\data\Mushroom')
     ret = mc.load()
-    print(ret.shape)
+    print(ret[0].shape, ret[1].shape)

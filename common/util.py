@@ -10,16 +10,20 @@ from six.moves import cPickle as pickle
 import sys
 
 
-def one_hot(array, class_num=10):
+def one_hot(input_array, class_num=10):
     """
-    (vec_count, )-->(vec_count, length)
+    (matrix, )-->(matrix, length)
     """
-    array_shape = array.shape
-    array_size = array.size
+    if input_array.shape[-1] == 1:
+        dim = input_array.ndim
+        input_array = np.squeeze(input_array, axis=dim - 1)
+    array_size = input_array.size
+    array_shape = input_array.shape
 
-    vec = array.reshape(array_size, )
-    ret = np.zeros((array_size, class_num))
-    ret[range(array_size), vec] = 1
+    # vec = input_array.reshape(array_size, )  # flatten input_array
+    vec = input_array.flatten()  # flatten input_array
+    ret = np.zeros((array_size, class_num))  # temp zero matrix
+    ret[range(array_size), vec] = 1  # modify last dimension by vec values
 
     return ret.reshape(*array_shape, class_num)
 

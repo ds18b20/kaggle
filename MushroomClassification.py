@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from common import layers
-from common.util import numerical_gradient, get_one_batch
+from common.util import numerical_gradient, get_one_batch, show_accuracy_loss
 from common.optimizer import SGD, Adam
-from common.datasets import HousePrices
+from common.datasets import MushroomClass
 
 import functools
 import time
@@ -49,8 +49,8 @@ class MultiLayerRegression(object):
         self.layers['Affine' + str(idx)] = layers.Affine(self.params['W' + str(idx)],
                                                          self.params['b' + str(idx)])
 
-        # self.last_layer = layers.SoftmaxCrossEntropy()
-        self.last_layer = layers.MSE()
+        self.last_layer = layers.SoftmaxCrossEntropy(class_num=2)
+        # self.last_layer = layers.MSE()
         # dict to save activation layer output
         self.activation_dict = OrderedDict()
 
@@ -136,61 +136,92 @@ class MultiLayerRegression(object):
                 grads['beta' + str(idx)] = numerical_gradient(loss_W, self.params['beta' + str(idx)])
         return grads
 
+    def accuracy(self, x_batch, t_batch):
+        y = self.predict(x_batch, train_flag=False)
+        y = np.argmax(y, axis=1)
 
-def submission_loss(bach_x):
-    pass
-
-
+        accuracy = np.mean(y == t_batch.flatten())
+        return accuracy
+    
+    
 def generate_submission_csv(id_column, predict_y, filename='prediction.csv', write_index=False):
     df = pd.DataFrame({'Id': id_column, 'SalePrice': predict_y.flatten()})
     df.to_csv(filename, index=write_index)
 
 
 if __name__ == '__main__':
-    hp_data = HousePrices('./data')
-    x, t, x_submission = hp_data.load(scale=True, label_log10=True, non_nan_ratio=0.8)
+    hp_data = MushroomClass('./data/Mushrooms')
+    x, t = hp_data.load(non_nan_ratio=0.8)
     print('x.shape:', x.shape)
+    print('t.shape:', t.shape)
+    
     feature_count = x.shape[-1]
     
-    train_num = 1400
+    train_num = 8000
     train_x, train_y, test_x, test_y = x[:train_num, :], t[:train_num, :], x[train_num:, :], t[train_num:, :]
+    print('train_x.shape:', train_x.shape)
+    print('train_y.shape:', train_y.shape)
+    print('test_x.shape:', test_x.shape)
+    print('test_y.shape:', test_y.shape)
 
-    max_iterations = 100000
+    max_iterations = 2000
     batch_size = 128
     # initialize network optimizer
     weight_init_types = {'std=0.01': 0.01, 'Xavier': 'sigmoid', 'He': 'relu'}
-    # optimizer = SGD(lr=0.01)
-    optimizer = Adam(lr=1e-3)
-
-    network = MultiLayerRegression(input_size=feature_count, hidden_size_list=[300, 100, 100, 100], output_size=1,
+    # optimizer = SGD(lr=1e-4)
+    optimizer = Adam(lr=1e-4)
+    
+    network = MultiLayerRegression(input_size=feature_count, hidden_size_list=[100, 10], output_size=2,
                                    weight_init_std='relu', activation='relu',
                                    weight_decay_lambda=1e-6,
                                    use_dropout=True, dropout_ratio=0.05,
                                    use_batchnorm=True)
-    print('network layers:', network.layers.keys())
-    train_loss = []
-    test_loss = []
 
+    # network = MultiLayerRegression(input_size=feature_count, hidden_size_list=[5], output_size=2,
+                                   # weight_init_std='relu', activation='relu',
+                                   # weight_decay_lambda=1e-6,
+                                   # use_dropout=False, dropout_ratio=0.05,
+                                   # use_batchnorm=False)
+
+    print('network layers:', network.layers.keys())
+    x_batch, t_batch = get_one_batch(train_x, train_y, batch_size=3)
+    g = network.gradient(x_batch, t_batch)
+    g_n = network.numerical_gradient(x_batch, t_batch)
+
+    train_loss_list = []
+    test_loss_list = []
+    train_acc_list = []
+    test_acc_list = []
+    
     # Start training
     for i in range(max_iterations):
         x_batch, t_batch = get_one_batch(train_x, train_y, batch_size=batch_size)
-
+        
         grads = network.gradient(x_batch, t_batch)
         optimizer.update(network.params, grads)
 
-        tmp_train_loss = network.loss(x_batch, t_batch, train_flag=False)
-        train_loss.append(tmp_train_loss)
-        tmp_test_loss = network.loss(test_x, test_y, train_flag=False)
-        test_loss.append(tmp_test_loss)
-        if i % 1000 == 0:
+        # train_loss = network.loss(x_batch, t_batch, train_flag=False)
+        # train_loss_list.append(train_loss)
+        # test_loss = network.loss(test_x, test_y, train_flag=False)
+        # test_loss_list.append(test_loss)
+        if i % 100 == 0:
             print("===========" + "iteration:" + str(i) + "===========")
-            print('Train loss:', tmp_train_loss)
-            print('Test loss:', tmp_test_loss)
-
-    # generate submission csv
-    y_submission = 10 ** network.predict(x_submission, train_flag=False)
-    generate_submission_csv(id_column=hp_data.test_id, predict_y=y_submission)
-
+            
+            # calculate accuracy
+            train_acc = network.accuracy(x_batch, t_batch)
+            train_acc_list.append(train_acc)
+            test_acc = network.accuracy(test_x, test_y)
+            test_acc_list.append(test_acc)
+            print("train accuracy: {:.3f}".format(train_acc), "test accuracy: {:.3f}".format(test_acc))
+            # calculate loss
+            train_loss = network.loss(x_batch, t_batch, train_flag=False)
+            train_loss_list.append(train_loss)
+            test_loss = network.loss(test_x, test_y, train_flag=False)
+            test_loss_list.append(test_loss)
+            print("train loss: {:.6f}".format(train_loss), "test loss: {:.6f}".format(test_loss))
+    show_accuracy_loss(train_acc_list, test_acc_list, train_loss_list, test_loss_list)
+    
+    """
     # show activation layer out
     bins_range = 30
     plt.figure(1)
@@ -212,6 +243,8 @@ if __name__ == '__main__':
     plt.plot(x, test_loss, marker=markers['test_loss'], markevery=100, label='test_loss')
     plt.xlabel("iterations")
     plt.ylabel("loss")
-    plt.ylim(0, 1)
+    # plt.ylim(0, 1)
     plt.legend()
     plt.show()
+    """
+

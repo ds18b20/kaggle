@@ -203,7 +203,8 @@ class MSE(object):
 
 
 class SoftmaxCrossEntropy(object):
-    def __init__(self):
+    def __init__(self, class_num):
+        self.class_num = class_num
         self.x = None
         self.t = None
 
@@ -232,14 +233,14 @@ class SoftmaxCrossEntropy(object):
         self.x = x_batch
         self.t = t_batch
         self.y = functions.softmax(self.x)
+        assert self.y.shape[0] == self.t.shape[0]
         self.loss = functions.cross_entropy(self.y, self.t)
         return self.loss
 
     def backward(self, d_y=1):
-        assert self.t.ndim == 1
         batch_size = self.y.shape[0]
         # 此处错误导致梯度无法正常下降
-        self.d_x = (self.y - one_hot(self.t)) / batch_size  # fix here: (y - t) / batch
+        self.d_x = (self.y - one_hot(self.t, class_num=self.class_num)) / batch_size  # fix here: (y - t) / batch
         return d_y * self.d_x
 
 

@@ -8,7 +8,7 @@ from collections import OrderedDict
 from common import layers
 from common.util import numerical_gradient, get_one_batch
 from common.optimizer import SGD, Adam
-from common.datasets import MushroomClass
+from common.datasets import HousePrices
 
 import functools
 import time
@@ -56,6 +56,7 @@ class MultiLayerRegression(object):
 
     def __init_weight(self, weight_init_std):
         all_size_list = [self.input_size] + self.hidden_size_list + [self.output_size]
+        #
         for idx in range(1, len(all_size_list)):
             scale = weight_init_std
             # print('weight_init_std:', weight_init_std)
@@ -137,41 +138,41 @@ class MultiLayerRegression(object):
         return grads
 
 
-def generate_submission_csv(id_column, predict_y, filename='prediction.csv', write_index=False):
+def submission_loss(bach_x):
+    pass
+
+
+def generate_submission_csv(id_column, predict_y, filename, write_index=False):
     df = pd.DataFrame({'Id': id_column, 'SalePrice': predict_y.flatten()})
     df.to_csv(filename, index=write_index)
 
 
 if __name__ == '__main__':
-    hp_data = MushroomClass('..\data\Mushroom')
-    x, t = hp_data.load(non_nan_ratio=0.8)
+    hp_data = HousePrices('./data/HousePrices')
+    x, t, x_submission = hp_data.load(scale=True, label_log10=True, non_nan_ratio=0.8)
     print('x.shape:', x.shape)
-    print('t.shape:', t.shape)
-
     feature_count = x.shape[-1]
-
-    train_num = 8000
+    
+    train_num = 1400
     train_x, train_y, test_x, test_y = x[:train_num, :], t[:train_num, :], x[train_num:, :], t[train_num:, :]
-    print('train_x.shape:', train_x.shape)
-    print('train_y.shape:', train_y.shape)
-    """
-    max_iterations = 100000
+
+    max_iterations = 10000
     batch_size = 128
     # initialize network optimizer
     weight_init_types = {'std=0.01': 0.01, 'Xavier': 'sigmoid', 'He': 'relu'}
     # optimizer = SGD(lr=0.01)
     optimizer = Adam(lr=1e-3)
 
-    network = MultiLayerRegression(input_size=feature_count, hidden_size_list=[300, 100, 100, 100], output_size=1,
+    network = MultiLayerRegression(input_size=feature_count, hidden_size_list=[100, 100, 100, 300], output_size=1,
                                    weight_init_std='relu', activation='relu',
-                                   weight_decay_lambda=1e-6,
-                                   use_dropout=True, dropout_ratio=0.05,
+                                   weight_decay_lambda=1e-4,
+                                   use_dropout=True, dropout_ratio=0.2,
                                    use_batchnorm=True)
     print('network layers:', network.layers.keys())
     train_loss = []
     test_loss = []
 
-    # Start training
+    # Start Training
     for i in range(max_iterations):
         x_batch, t_batch = get_one_batch(train_x, train_y, batch_size=batch_size)
 
@@ -186,10 +187,17 @@ if __name__ == '__main__':
             print("===========" + "iteration:" + str(i) + "===========")
             print('Train loss:', tmp_train_loss)
             print('Test loss:', tmp_test_loss)
+    # x_pre = train_x[0:3]
+    # t_pre = train_y[0:3]
+    # y_pre = network.predict(x_pre)
+    # print('label:', t_pre)
+    # print('prediction:', y_pre)
 
     # generate submission csv
     y_submission = 10 ** network.predict(x_submission, train_flag=False)
-    generate_submission_csv(id_column=hp_data.test_id, predict_y=y_submission)
+    generate_submission_csv(id_column=hp_data.test_id,
+                            predict_y=y_submission,
+                            filename='HousePrices_Prediction/HousePricesPrediction.csv')
 
     # show activation layer out
     bins_range = 30
@@ -203,6 +211,7 @@ if __name__ == '__main__':
             plt.yticks([], [])
 
     plt.tight_layout()
+    # plt.show()
 
     # show train_loss & test_loss
     plt.figure(2)
@@ -212,7 +221,6 @@ if __name__ == '__main__':
     plt.plot(x, test_loss, marker=markers['test_loss'], markevery=100, label='test_loss')
     plt.xlabel("iterations")
     plt.ylabel("loss")
-    plt.ylim(0, 1)
+    # plt.ylim(0, 1)
     plt.legend()
     plt.show()
-    """
