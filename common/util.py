@@ -77,17 +77,37 @@ def load_pickle(f, encoding='latin1'):
     raise ValueError("invalid python version: {}".format(version))
 
 
-def show_accuracy_loss(train_acc, test_acc, train_loss, test_loss):
+def show_accuracy_loss(train_acc, test_acc, train_loss, test_loss, step=10):
     n = 2
+    markers = {'train_accuracy': '^', 'test_accuracy': '*', 'train_loss': 'o', 'test_loss': 's'}
     _, figs = plt.subplots(1, n)
     # fig[0]: train accuracy & test accuracy
-    figs[0].plot(train_acc, label='train accuracy')
-    figs[0].plot(test_acc, label='test accuracy')
+    figs[0].plot(train_acc, marker=markers['train_accuracy'], markevery=step, label='train accuracy')
+    figs[0].plot(test_acc, marker=markers['test_accuracy'], markevery=step, label='test accuracy')
+    plt.xlabel("iterations")
+    plt.ylabel("accuracy")
     figs[0].legend()
     # fig[1]: train loss & test loss
-    figs[1].plot(train_loss, label='train loss')
-    figs[1].plot(test_loss, label='test loss')
+    figs[1].plot(train_loss, marker=markers['train_loss'], markevery=step, label='train loss')
+    figs[1].plot(test_loss, marker=markers['test_loss'], markevery=step, label='test loss')
+    plt.xlabel("iterations")
+    plt.ylabel("loss")
     figs[1].legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+def show_activation(activation_dict, bins_range=30):
+    # show activation layer out
+    for idx, key in enumerate(activation_dict.keys()):
+        plt.subplot(1, len(activation_dict), idx + 1)
+        plt.title(key)
+        ran = (0, 1)
+        plt.hist(activation_dict[key].flatten(), bins=bins_range, range=ran)
+        if idx != 0:
+            plt.yticks([], [])
+    plt.tight_layout()
     plt.show()
 
 

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from common import layers
-from common.util import numerical_gradient, get_one_batch, show_accuracy_loss
+from common.util import numerical_gradient, get_one_batch, show_accuracy_loss, show_activation
 from common.optimizer import SGD, Adam
 from common.datasets import MushroomClass
 
@@ -142,11 +142,6 @@ class MultiLayerRegression(object):
 
         accuracy = np.mean(y == t_batch.flatten())
         return accuracy
-    
-    
-def generate_submission_csv(id_column, predict_y, filename='prediction.csv', write_index=False):
-    df = pd.DataFrame({'Id': id_column, 'SalePrice': predict_y.flatten()})
-    df.to_csv(filename, index=write_index)
 
 
 if __name__ == '__main__':
@@ -219,32 +214,5 @@ if __name__ == '__main__':
             test_loss = network.loss(test_x, test_y, train_flag=False)
             test_loss_list.append(test_loss)
             print("train loss: {:.6f}".format(train_loss), "test loss: {:.6f}".format(test_loss))
-    show_accuracy_loss(train_acc_list, test_acc_list, train_loss_list, test_loss_list)
-    
-    """
-    # show activation layer out
-    bins_range = 30
-    plt.figure(1)
-    for idx, key in enumerate(network.activation_dict.keys()):
-        ax = plt.subplot(1, network.hidden_layer_num, idx + 1)
-        ax.set_title(key)
-        ran = (0, 1)
-        ax.hist(network.activation_dict[key].flatten(), bins=bins_range, range=ran)
-        if idx != 0:
-            plt.yticks([], [])
-
-    plt.tight_layout()
-
-    # show train_loss & test_loss
-    plt.figure(2)
-    markers = {'train_loss': 'o', 'test_loss': 's'}
-    x = np.arange(max_iterations)
-    plt.plot(x, train_loss, marker=markers['train_loss'], markevery=100, label='train_loss')
-    plt.plot(x, test_loss, marker=markers['test_loss'], markevery=100, label='test_loss')
-    plt.xlabel("iterations")
-    plt.ylabel("loss")
-    # plt.ylim(0, 1)
-    plt.legend()
-    plt.show()
-    """
-
+    show_accuracy_loss(train_acc_list, test_acc_list, train_loss_list, test_loss_list, 5)
+    show_activation(network.activation_dict, bins_range=30)

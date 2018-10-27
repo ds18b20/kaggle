@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from common import layers
-from common.util import numerical_gradient, get_one_batch
+from common.util import numerical_gradient, get_one_batch, show_activation
 from common.optimizer import SGD, Adam
 from common.datasets import HousePrices
 
@@ -153,20 +153,25 @@ if __name__ == '__main__':
     print('x.shape:', x.shape)
     feature_count = x.shape[-1]
     
-    train_num = 1400
+    train_num = 1450
     train_x, train_y, test_x, test_y = x[:train_num, :], t[:train_num, :], x[train_num:, :], t[train_num:, :]
 
-    max_iterations = 10000
+    max_iterations = 30000
     batch_size = 128
     # initialize network optimizer
     weight_init_types = {'std=0.01': 0.01, 'Xavier': 'sigmoid', 'He': 'relu'}
     # optimizer = SGD(lr=0.01)
     optimizer = Adam(lr=1e-3)
 
-    network = MultiLayerRegression(input_size=feature_count, hidden_size_list=[100, 100, 100, 300], output_size=1,
+    # network = MultiLayerRegression(input_size=feature_count, hidden_size_list=[100, 100, 100, 300], output_size=1,
+    #                                weight_init_std='relu', activation='relu',
+    #                                weight_decay_lambda=1e-4,
+    #                                use_dropout=True, dropout_ratio=0.2,
+    #                                use_batchnorm=True)
+    network = MultiLayerRegression(input_size=feature_count, hidden_size_list=[300, 200, 100, 10], output_size=1,
                                    weight_init_std='relu', activation='relu',
                                    weight_decay_lambda=1e-4,
-                                   use_dropout=True, dropout_ratio=0.2,
+                                   use_dropout=True, dropout_ratio=0.3,
                                    use_batchnorm=True)
     print('network layers:', network.layers.keys())
     train_loss = []
@@ -187,11 +192,6 @@ if __name__ == '__main__':
             print("===========" + "iteration:" + str(i) + "===========")
             print('Train loss:', tmp_train_loss)
             print('Test loss:', tmp_test_loss)
-    # x_pre = train_x[0:3]
-    # t_pre = train_y[0:3]
-    # y_pre = network.predict(x_pre)
-    # print('label:', t_pre)
-    # print('prediction:', y_pre)
 
     # generate submission csv
     y_submission = 10 ** network.predict(x_submission, train_flag=False)
@@ -200,18 +200,7 @@ if __name__ == '__main__':
                             filename='HousePrices_Prediction/HousePricesPrediction.csv')
 
     # show activation layer out
-    bins_range = 30
-    plt.figure(1)
-    for idx, key in enumerate(network.activation_dict.keys()):
-        ax = plt.subplot(1, network.hidden_layer_num, idx + 1)
-        ax.set_title(key)
-        ran = (0, 1)
-        ax.hist(network.activation_dict[key].flatten(), bins=bins_range, range=ran)
-        if idx != 0:
-            plt.yticks([], [])
-
-    plt.tight_layout()
-    # plt.show()
+    show_activation(network.activation_dict, bins_range=30)
 
     # show train_loss & test_loss
     plt.figure(2)
