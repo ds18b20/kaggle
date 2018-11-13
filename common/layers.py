@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import logging; logging.basicConfig(level=logging.INFO)
-import numpy as np
-from common import functions
-from common.util import one_hot, im2col, col2im
+# import logging; logging.basicConfig(level=logging.INFO)
+import logging; logging.basicConfig(level=logging.DEBUG)
 import sys
+import numpy as np
+from .functions import mean_squared_error, softmax, cross_entropy
+from .util import one_hot, im2col, col2im
 
 
 class Affine(object):
@@ -191,7 +192,7 @@ class MSE(object):
         self.x = x_batch
         self.t = t_batch
         self.y = self.x
-        self.loss = functions.mean_squared_error(self.y, self.t)
+        self.loss = mean_squared_error(self.y, self.t)
 
         return self.loss
 
@@ -232,9 +233,9 @@ class SoftmaxCrossEntropy(object):
         # self.x = x_batch.copy()
         self.x = x_batch
         self.t = t_batch
-        self.y = functions.softmax(self.x)
+        self.y = softmax(self.x)
         assert self.y.shape[0] == self.t.shape[0]
-        self.loss = functions.cross_entropy(self.y, self.t)
+        self.loss = cross_entropy(self.y, self.t)
         return self.loss
 
     def backward(self, d_y=1):
@@ -260,7 +261,7 @@ class Dropout(object):
             self.mask = np.random.rand(*x.shape) > self.drop_ratio
             return x * self.mask / self.keep_ratio
         else:
-            return x
+            return x * (1 - self.drop_ratio)  # only (1 - self.drop_ratio) of x was passed during training process
 
     def backward(self, d_y):
         return d_y * self.mask
@@ -271,6 +272,9 @@ class BatchNormalization(object):
     http://arxiv.org/abs/1502.03167
     """
     def __init__(self, gamma, beta, momentum=0.9, running_mean=None, running_var=None):
+        self.x = None
+        self.t = None
+        self.y = None
         self.gamma = gamma
         self.beta = beta
         self.momentum = momentum
@@ -287,15 +291,18 @@ class BatchNormalization(object):
         self.dgamma = None
         self.dbeta = None
 
-    def forward(self, x, train_flag=True):
+    def forward(self, x, train_flag=True):  # train_flag=False
+        self.x = x
+        # rememner input shape
         self.input_shape = x.shape
         if x.ndim != 2:
             N, C, H, W = x.shape
             x = x.reshape(N, -1)
 
         out = self.__forward(x, train_flag)
+        self.y = out.reshape(*self.input_shape)
 
-        return out.reshape(*self.input_shape)
+        return self.y
 
     def __forward(self, x, train_flag):
         if self.running_mean is None:

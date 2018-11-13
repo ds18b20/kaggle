@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import logging; logging.basicConfig(level=logging.INFO)
+# import logging; logging.basicConfig(level=logging.INFO)
+import logging; logging.basicConfig(level=logging.DEBUG)
 import struct
 import numpy as np
 import pandas as pd
 import os
 import sys
-from .util import show_img, show_imgs, load_pickle, one_hot, label2name, get_one_batch
+from .util import load_pickle, one_hot, label2name, get_one_batch
+# from .visualize import show_img, show_imgs
 
 mnist_fashion_name_list = ['t-shirt', 'trouser', 'pullover', 'dress', 'coat',
                            'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot']
@@ -85,6 +87,38 @@ class MNIST(Loader):
         if label_one_hot:
             train_label = one_hot(train_label)
             test_label = one_hot(test_label)
+            
+        return train_image, train_label, test_image, test_label
+
+
+class MNISTCSV(object):
+    def __init__(self, root):
+        # super(MNIST, self).__init__()
+        self.root = root
+        self.train_path = os.path.join(self.root, 'train.csv')
+        self.test_path = os.path.join(self.root, 'test.csv')
+        
+    def load(self, normalize=True, image_flat=False, label_one_hot=False):
+        log_info = 'M@{}, C@{}, F@{}, MNIST load: normalize={}, image_flat={}, label_one_hot={}'.format(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, normalize, image_flat, label_one_hot)
+        logging.info(log_info)
+        
+        train_image = pd.read_csv(self.train_path).iloc[:, 1:].values.reshape(-1, 1, 28, 28)  # from next column of label column
+        train_label = pd.read_csv(self.train_path)['label'].values
+        test_image = pd.read_csv(self.test_path).values.reshape(-1, 1, 28, 28)  # no label column
+        test_label = None
+        
+        if normalize:
+            train_image = train_image / 255.0
+            test_image = test_image / 255.0
+
+        if image_flat:
+            train_image = train_image.reshape(train_image.shape[0], -1)
+            test_image = test_image.reshape(test_image.shape[0], -1)
+
+        if label_one_hot:
+            train_label = one_hot(train_label)
+            if test_label:
+                test_label = one_hot(test_label)
             
         return train_image, train_label, test_image, test_label
 
@@ -420,6 +454,7 @@ class MushroomClass(object):
         self.root = root
         self.train_filename = 'mushrooms.csv'
         self.test_id = None
+        self.column_name = None
 
     def load(self, non_nan_ratio=0.75):
         """
@@ -440,7 +475,8 @@ class MushroomClass(object):
         # delete columns which NaN count > non_nan_ratio * ALL
         train_data.dropna(axis=1, how='any', thresh=train_data.shape[0] * non_nan_ratio, inplace=True)
         # vectorize strings to numbers
-        train_data = pd.get_dummies(train_data, dummy_na=True)  # dummy_na=True take NaN as a legal feature label
+        train_data = pd.get_dummies(train_data, dummy_na=False)  # dummy_na=True take NaN as a legal feature label
+        self.column_name = train_data.columns.values
 
         return train_data.values.astype(np.float64), label_data.values.reshape((-1, 1))
 

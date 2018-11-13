@@ -30,15 +30,3 @@ def cross_entropy(y, label):
     index_column = label.flatten()  # Error Fixed: label must be a one dimensional array
     picked = y[index_row, index_column] + delta  # choose prediction corresponding to label
     return np.sum(-np.log(picked)) / row_count  # sum(-t * ln(y)) / row_count
-
-
-def accuracy(y_hat: np.array, y: np.array):
-    tmp = y_hat.argmax(axis=1) == y  # type: np.ndarray
-    return np.mean(tmp)
-
-
-def check_is_ndarray(input_array):
-    try:
-        return isinstance(input_array, np.ndarray)  # or use: hasattr(input_array, shape)
-    except TypeError:
-        print("Input data type should be ndarray.")
