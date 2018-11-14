@@ -77,8 +77,8 @@ class MNIST(Loader):
         test_label = self.load_raw(self.test_label_path)
         
         if normalize:
-            train_image = train_image / 255.0
-            test_image = test_image / 255.0
+            train_image = (train_image / 255.0).astype('float16')
+            test_image = (test_image / 255.0).astype('float16')
 
         if image_flat:
             train_image = train_image.reshape(train_image.shape[0], -1)
@@ -102,14 +102,17 @@ class MNISTCSV(object):
         log_info = 'M@{}, C@{}, F@{}, MNIST load: normalize={}, image_flat={}, label_one_hot={}'.format(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, normalize, image_flat, label_one_hot)
         logging.info(log_info)
         
-        train_image = pd.read_csv(self.train_path).iloc[:, 1:].values.reshape(-1, 1, 28, 28)  # from next column of label column
-        train_label = pd.read_csv(self.train_path)['label'].values
-        test_image = pd.read_csv(self.test_path).values.reshape(-1, 1, 28, 28)  # no label column
+        train_image = pd.read_csv(self.train_path).astype('uint8')  # 0-255
+        train_image =train_image.iloc[:, 1:].values.reshape(-1, 1, 28, 28)  # from next column of label column
+        
+        train_label = pd.read_csv(self.train_path).astype('uint8')['label'].values
+        test_image = pd.read_csv(self.test_path).astype('uint8')  # 0-255
+        test_image = test_image.values.reshape(-1, 1, 28, 28)  # no label column
         test_label = None
         
         if normalize:
-            train_image = train_image / 255.0
-            test_image = test_image / 255.0
+            train_image = (train_image / 255.0).astype('float16')
+            test_image = (test_image / 255.0).astype('float16')
 
         if image_flat:
             train_image = train_image.reshape(train_image.shape[0], -1)

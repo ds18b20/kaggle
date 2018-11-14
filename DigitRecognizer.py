@@ -101,9 +101,9 @@ def show_structure(net, x_batch, y_batch):
 
 
 if __name__ == '__main__':
-    # mnist_csv = MNISTCSV('data\\MNIST')
-    mnist_csv = MNIST('data\\MNIST')
-    train_x, train_y, test_x, test_y = mnist_csv.load(normalize=True, image_flat=False, label_one_hot=False)
+    mnist = MNISTCSV('data\\MNIST')
+    # mnist = MNIST('data\\MNIST')
+    train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=False, label_one_hot=False)
     # # show sample images
     # train_x_sample, train_y_sample = get_one_batch(train_x, train_y, batch_size=5)
     # show_imgs(train_x_batch.reshape(-1, 28, 28), train_y_batch)
@@ -123,13 +123,13 @@ if __name__ == '__main__':
     # print('****** Print structure without values: OK ******')
 
     # show network structure
-    train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=10)
+    train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=5)
     show_structure(network, train_x_batch, train_y_batch)
 
-    op = optimizer.Adam(lr=0.01)
+    op = optimizer.Adam(lr=0.001)
     epoch = 100
     for i in range(1000):
-        train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=10)
+        train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=5)
         grads = network.gradient(train_x_batch, train_y_batch)
         try:
             op.update(network.params, grads)
@@ -140,15 +140,17 @@ if __name__ == '__main__':
             # calculate accuracy
             train_acc = network.accuracy(train_x_batch, train_y_batch)
             train_acc_list.append(train_acc)
-            test_acc = network.accuracy(test_x, test_y)
-            test_acc_list.append(test_acc)
-            print("train accuracy: {:.3f}".format(train_acc), "test accuracy: {:.3f}".format(test_acc))
+            # test_acc = network.accuracy(test_x, test_y)
+            # test_acc_list.append(test_acc)
+            # print("train accuracy: {:.3f}".format(train_acc), "test accuracy: {:.3f}".format(test_acc))
+            print("train accuracy: {:.3f}".format(train_acc))
             # calculate loss
             train_loss = network.loss(train_x_batch, train_y_batch)
             train_loss_list.append(train_loss)
-            test_loss = network.loss(test_x, test_y)
-            test_loss_list.append(test_loss)
-            print("train loss: {:.3f}".format(train_loss), "test loss: {:.3f}".format(test_loss))
+            # test_loss = network.loss(test_x, test_y)
+            # test_loss_list.append(test_loss)
+            # print("train loss: {:.3f}".format(train_loss), "test loss: {:.3f}".format(test_loss))
+            print("train loss: {:.3f}".format(train_loss))
 
-    show_accuracy_loss(train_acc_list, test_acc_list, train_loss_list, test_loss_list)
-    show_filter(network.params['W1'])
+    # show_accuracy_loss(train_acc_list, test_acc_list, train_loss_list, test_loss_list)
+    # show_filter(network.params['W1'])
