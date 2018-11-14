@@ -8,6 +8,7 @@ from common.datasets import MNISTCSV, MNIST
 from common.util import get_one_batch
 from common.visualize import show_imgs, show_accuracy_loss, show_filter
 import common.optimizer as optimizer
+import pandas as pd
 
 
 class SimpleConvNet(object):
@@ -100,10 +101,17 @@ def show_structure(net, x_batch, y_batch):
     return ret
 
 
+def generate_submission_csv(id_column, predict_y, filename, write_index=False):
+    df = pd.DataFrame({'ImageId': id_column, 'Label': predict_y.flatten()})
+    df.to_csv(filename, index=write_index)
+
+    
 if __name__ == '__main__':
     mnist = MNISTCSV('data\\MNIST')
     # mnist = MNIST('data\\MNIST')
     train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=False, label_one_hot=False)
+    print(train_x.shape)
+    print(test_x.shape)
     # # show sample images
     # train_x_sample, train_y_sample = get_one_batch(train_x, train_y, batch_size=5)
     # show_imgs(train_x_batch.reshape(-1, 28, 28), train_y_batch)
@@ -123,13 +131,13 @@ if __name__ == '__main__':
     # print('****** Print structure without values: OK ******')
 
     # show network structure
-    train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=5)
+    train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=10)
     show_structure(network, train_x_batch, train_y_batch)
 
     op = optimizer.Adam(lr=0.001)
     epoch = 100
     for i in range(1000):
-        train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=5)
+        train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=10)
         grads = network.gradient(train_x_batch, train_y_batch)
         try:
             op.update(network.params, grads)
@@ -154,3 +162,13 @@ if __name__ == '__main__':
 
     # show_accuracy_loss(train_acc_list, test_acc_list, train_loss_list, test_loss_list)
     # show_filter(network.params['W1'])
+    pre_list = []
+    for x in test_x:
+        pre = network.predict(x.reshape(1, 1 , 28, 28))
+        pre = np.argmax(pre, axis=1)
+        pre_list.append(pre)
+        
+        # print(pre.shape)
+        # print(pre[0])
+        
+    generate_submission_csv(range(len(pre_list))+1, np.array(pre_list), 'submission.csv')
