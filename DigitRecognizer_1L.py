@@ -171,4 +171,4 @@ if __name__ == '__main__':
         # print(pre.shape)
         # print(pre[0])
         
-    generate_submission_csv(range(len(pre_list))+1, np.array(pre_list), 'submission.csv')
+    generate_submission_csv(range(1, len(pre_list) + 1), np.array(pre_list), 'submission.csv')

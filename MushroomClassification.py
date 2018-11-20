@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from common import layers
-from common.util import numerical_gradient, get_one_batch, show_accuracy_loss, show_activation
+from common.util import numerical_gradient, get_one_batch
+from common.visualize import show_accuracy_loss, show_activation
 from common.optimizer import SGD, Adam
 from common.datasets import MushroomClass
 
@@ -171,12 +172,6 @@ if __name__ == '__main__':
                                    weight_decay_lambda=1e-6,
                                    use_dropout=True, dropout_ratio=0.05,
                                    use_batchnorm=True)
-
-    # network = MultiLayerRegression(input_size=feature_count, hidden_size_list=[5], output_size=2,
-                                   # weight_init_std='relu', activation='relu',
-                                   # weight_decay_lambda=1e-6,
-                                   # use_dropout=False, dropout_ratio=0.05,
-                                   # use_batchnorm=False)
 
     print('network layers:', network.layers.keys())
     x_batch, t_batch = get_one_batch(train_x, train_y, batch_size=3)

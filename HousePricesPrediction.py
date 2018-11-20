@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from common import layers
-from common.util import numerical_gradient, get_one_batch, show_activation
+from common.util import numerical_gradient, get_one_batch
+from common.visualize import show_activation
 from common.optimizer import SGD, Adam
 from common.datasets import HousePrices
 
